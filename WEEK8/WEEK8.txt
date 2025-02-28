@@ -1,0 +1,157 @@
+1.  The HRD manager has decided to raise the salary of all the Instructors in a given 
+department number by 5%. Whenever, any such raise is given to the instructor, a 
+record for the same is maintained in the salary_raise table. It includes the Instuctor 
+Id, the date when the raise was given and the actual raise amount. Write a PL/SQL 
+block to update the salary of each Instructor and insert a record in the salary_raise 
+table
+
+Ans: 
+
+CREATE TABLE SALARY_RAISE (
+    INSTRUCTOR_ID VARCHAR(5) PRIMARY KEY,
+    RAISE_DATE VARCHAR(10),
+    RAISE_AMOUNT DECIMAL(10, 2),
+    FOREIGN KEY (INSTRUCTOR_ID) REFERENCES INSTRUCTOR(ID) ON DELETE SET NULL
+);
+
+DECLARE
+    I_DEPT_NAME VARCHAR(20) := '&I_DEPT_NAME';
+    I_ID VARCHAR(5);
+    I_RAISE NUMBER;
+    I_RAISE_DATE DATE;
+    CURSOR C1 IS SELECT SALARY, ID FROM INSTRUCTOR WHERE DEPT_NAME = I_DEPT_NAME;
+BEGIN
+    I_RAISE_DATE := TO_DATE(&I_RAISE_DATE, 'DDMMYYYY');
+    OPEN C1;
+    LOOP
+        FETCH C1 INTO I_RAISE, I_ID;
+        EXIT WHEN C1%NOTFOUND;
+        INSERT INTO SALARY_RAISE VALUES (I_ID, TO_CHAR(I_RAISE_DATE), 0.05 * I_RAISE);
+        I_RAISE := I_RAISE * 1.05;
+        DBMS_OUTPUT.PUT_LINE('DEPT NAME: ' || I_DEPT_NAME || ' SALARY AFTER RAISE: ' || I_RAISE || ' DATE: ' || I_RAISE_DATE);
+    END LOOP;
+    CLOSE C1;
+END;
+/
+
+
+2. Write a PL/SQL block that will display the ID, name, dept_name  and tot_cred  of 
+the first 10 students with lowest total credit.
+
+Ans: 
+
+DECLARE
+    CURSOR CUR_STUDENTS IS
+        SELECT ID, NAME, DEPT_NAME, TOT_CRED
+        FROM STUDENT
+        ORDER BY TOT_CRED ASC
+        FETCH FIRST 10 ROWS ONLY;
+BEGIN
+    FOR REC IN CUR_STUDENTS LOOP
+        DBMS_OUTPUT.PUT_LINE('ID: ' || REC.ID || ', NAME: ' || REC.NAME || ', DEPT: ' || REC.DEPT_NAME || ', CREDITS: ' || REC.TOT_CRED);
+    END LOOP;
+END;
+/
+
+
+3. Print the Course details and the total number of students registered for each course 
+along with the course details
+
+Ans:
+
+DECLARE 
+    CURSOR CUR_COURSES IS
+        SELECT C.COURSE_ID, C.TITLE, C.DEPT_NAME, C.CREDITS, I.NAME AS INSTRUCTOR_NAME,
+               S.BUILDING, S.ROOM_NUMBER, S.TIME_SLOT_ID, COUNT(T.ID) AS TOT_STUDENT_NO
+        FROM COURSE C
+        JOIN TEACHES TE ON C.COURSE_ID = TE.COURSE_ID
+        JOIN INSTRUCTOR I ON TE.ID = I.ID
+        JOIN SECTION S ON C.COURSE_ID = S.COURSE_ID
+        LEFT JOIN TAKES T ON C.COURSE_ID = T.COURSE_ID
+        GROUP BY C.COURSE_ID, C.TITLE, C.DEPT_NAME, C.CREDITS, I.NAME, S.BUILDING, S.ROOM_NUMBER, S.TIME_SLOT_ID;
+BEGIN
+    FOR REC IN CUR_COURSES LOOP
+        DBMS_OUTPUT.PUT_LINE('COURSE-ID: ' || REC.COURSE_ID || ', TITLE: ' || REC.TITLE || 
+                             ', DEPT-NAME: ' || REC.DEPT_NAME || ', CREDITS: ' || REC.CREDITS ||
+                             ', INSTRUCTOR-NAME: ' || REC.INSTRUCTOR_NAME || ', BUILDING: ' || REC.BUILDING ||
+                             ', ROOM-NUMBER: ' || REC.ROOM_NUMBER || ', TIME-SLOT-ID: ' || REC.TIME_SLOT_ID ||
+                             ', TOT-STUDENT-NO: ' || REC.TOT_STUDENT_NO);
+    END LOOP;
+END;
+/
+
+
+4. Find all students who take the course with Course-id: CS101 and if he/ she has 
+less than 30 total credit (tot-cred), deregister the student from that course. 
+
+Ans: 
+
+BEGIN
+    DELETE FROM TAKES
+    WHERE COURSE_ID = 'CS101' AND ID IN (SELECT ID FROM STUDENT WHERE TOT_CRED < 30);
+END;
+/
+
+
+5. Alter StudentTable(refer Lab No. 8 Exercise) by resetting column LetterGrade to 
+F. Then write a PL/SQL block  to update the table by mapping GPA to the 
+corresponding letter grade for each student. 
+
+Ans:
+
+DECLARE
+    CURSOR CUR_STUDENTS IS
+        SELECT ROLLNO, GPA FROM STUDENTTABLE FOR UPDATE;
+BEGIN
+    FOR rec IN CUR_STUDENTS LOOP
+        IF REC.GPA >= 3.7 THEN
+            UPDATE STUDENTTABLE SET LETTERGRADE = 'A' WHERE CURRENT OF CUR_STUDENTS;
+        ELSIF REC.GPA >= 3.0 THEN
+            UPDATE STUDENTTABLE SET LETTERGRADE = 'B' WHERE CURRENT OF CUR_STUDENTS;
+        ELSIF REC.GPA >= 2.0 THEN
+            UPDATE STUDENTTABLE SET LETTERGRADE = 'C' WHERE CURRENT OF CUR_STUDENTS;
+        ELSE
+            UPDATE STUDENTTABLE SET LETTERGRADE = 'F' WHERE CURRENT OF CUR_STUDENTS;
+        END IF;
+    END LOOP;
+END;
+/
+
+
+6. Write a PL/SQL block to print the list of Instructors teaching a specified course.  
+
+Ans:
+
+DECLARE
+    V_COURSE_ID VARCHAR2(10) := 'COMP. SCI.';
+    CURSOR CUR_INSTRUCTORS (P_COURSE_ID VARCHAR2) IS
+        SELECT I.ID, I.NAME
+        FROM TEACHES T
+        JOIN INSTRUCTOR I ON T.ID = I.ID
+        WHERE T.COURSE_ID = P_COURSE_ID;
+BEGIN
+    FOR REC IN CUR_INSTRUCTORS(V_COURSE_ID) LOOP
+        DBMS_OUTPUT.PUT_LINE('INSTRUCTOR: ' || REC.ID); 
+        DBMS_OUTPUT.PUT_LINE('NAME: ' || REC.NAME);
+    END LOOP;
+END;
+/
+
+
+7. Write a PL/SQL block to list the students who have registered for a course taught 
+by his/her advisor.
+
+Ans:
+
+DECLARE
+    CURSOR CUR_STUDENTS IS
+        SELECT STUDENT.ID, STUDENT.NAME FROM STUDENT
+        JOIN ADVISOR ON STUDENT.ID = ADVISOR.S_ID
+        JOIN TEACHES ON ADVISOR.I_ID = TEACHES.ID
+        WHERE STUDENT.ID IN (SELECT ID FROM TAKES WHERE TAKES.COURSE_ID = TEACHES.COURSE_ID);
+BEGIN
+    FOR REC IN CUR_STUDENTS LOOP
+        DBMS_OUTPUT.PUT_LINE('STUDENT: ' || REC.ID || ', NAME: ' || REC.NAME);
+    END LOOP;
+END;
+/  
