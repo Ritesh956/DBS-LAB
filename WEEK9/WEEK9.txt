@@ -1,0 +1,365 @@
+Write a procedure to display a message â€œGood Day to Youâ€
+
+create or replace procedure print_sent is 
+begin 
+dbms_output.put_line('Good day to You'); 
+end; 
+/
+
+declare 
+begin 
+print_sent; 
+end; 
+/
+
+Ans: Good day to You
+
+Based on the University Database Schema in Lab 2, write a procedure which takes 
+the dept_name as input parameter and lists all the instructors  associated with the 
+department as well as list all the courses offered by the department. Also, write an 
+anonymous block with the procedure call. 
+
+CREATE OR REPLACE PROCEDURE p1 (dept IN instructor.dept_name%TYPE) IS
+CURSOR s1 IS SELECT title FROM course WHERE dept_name = dept;
+CURSOR s2 IS SELECT name FROM instructor WHERE dept_name = dept;
+BEGIN
+ DBMS_OUTPUT.PUT_LINE('Instructors in the ' || dept || ' department are as follows');
+ FOR s IN s2
+ LOOP
+ DBMS_OUTPUT.PUT_LINE(s.name);
+ END LOOP;
+ DBMS_OUTPUT.PUT_LINE('Courses offered in the ' || dept || ' department are as follows');
+ FOR s IN s1
+ LOOP
+ DBMS_OUTPUT.PUT_LINE(s.title);
+ END LOOP;
+END;
+/
+
+DECLARE
+ dept instructor.dept_name%TYPE;
+ ins_name instructor.name%TYPE;
+BEGIN
+ dept := '&deptname';
+ p1(dept);
+END;
+
+Ans:
+Instructors in the Comp. Sci. department are as follows
+Srinivasan
+Katz
+Brandt
+Courses offered in the Comp. Sci. department are as follows
+Intro. to Computer Science
+Game Design
+Robotics
+Image Processing
+Database System Concepts
+
+
+Based on the University Database Schema in Lab 2, write a Pl/Sql block of code 
+that lists the most popular course (highest number of students take it) for each of 
+the departments. It should make use of a procedure course_popular which finds 
+the most popular course in the given department. 
+
+CREATE OR REPLACE PROCEDURE course_popular IS
+CURSOR c1 IS WITH temp(cid, c_count) AS(
+SELECT t.course_id, COUNT(DISTINCT ID) AS stu_count
+FROM takes t, course
+WHERE t.course_id = course.course_id
+GROUP BY t.course_id
+)
+SELECT dept_name, MAX(c_count) AS max_count
+FROM temp t, course c
+WHERE t.cid = c.course_id
+GROUP BY dept_name;
+BEGIN
+ FOR c IN c1
+ LOOP
+ DBMS_OUTPUT.PUT_LINE('Department ' || c.dept_name || ' and number of students ' ||
+c.max_count);
+ END LOOP;
+END;
+/
+DECLARE
+BEGIN
+ COURSE_POPULAR;
+END;
+/
+
+Ans:
+Department Elec. Eng. and number of students 1
+Department Physics and number of students 1
+Department Comp. Sci. and number of students 6
+Department Finance and number of students 1
+Department Biology and number of students 1
+Department Music and number of students 1
+
+4. Based on the University Database Schema in Lab 2, write a procedure which takes 
+the dept-name as input parameter and lists all the students associated with the 
+department as well as list all the courses offered by the department. Also, write an 
+anonymous block with the procedure call.
+
+CREATE OR REPLACE PROCEDURE list_students_and_courses(dept_name IN VARCHAR2) IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Students in department ' || dept_name || ':');
+    FOR student_record IN 
+        (SELECT s.ID, s.name
+         FROM student s
+         WHERE s.dept_name = dept_name) LOOP
+        DBMS_OUTPUT.PUT_LINE('Student ID: ' || student_record.ID || ', Name: ' || student_record.name);
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('Courses in department ' || dept_name || ':');
+    FOR course_record IN 
+        (SELECT c.course_id, c.title
+         FROM course c
+         WHERE c.dept_name = dept_name) LOOP
+        DBMS_OUTPUT.PUT_LINE('Course ID: ' || course_record.course_id || ', Title: ' || course_record.title);
+    END LOOP;
+END list_students_and_courses;
+/
+
+DECLARE
+    dept department.dept_name%TYPE;
+BEGIN
+    dept := '&deptname';
+    list_students_and_courses(dept);
+END;
+/
+
+Ans:
+Enter value for deptname: Comp. Sci.
+old   4:     dept := '&deptname';  -- Accept user input for department name
+new   4:     dept := 'Comp. Sci.';  -- Accept user input for department name
+Students in department Comp. Sci.:
+Student ID: 00128, Name: Zhang
+Student ID: 12345, Name: Shankar
+Student ID: 23121, Name: Chavez
+Student ID: 44553, Name: Peltier
+Student ID: 45678, Name: Levy
+Student ID: 54321, Name: Williams
+Student ID: 55739, Name: Sanchez
+Student ID: 70557, Name: Snow
+Student ID: 76543, Name: Brown
+Student ID: 76653, Name: Aoi
+Student ID: 98765, Name: Bourikas
+Student ID: 98988, Name: Tanaka
+Courses in department Comp. Sci.:
+Course ID: BIO-101, Title: Intro. to Biology
+Course ID: BIO-301, Title: Genetics
+Course ID: BIO-399, Title: Computational Biology
+Course ID: CS-101, Title: Intro. to Computer Science
+Course ID: CS-190, Title: Game Design
+Course ID: CS-315, Title: Robotics
+Course ID: CS-319, Title: Image Processing
+Course ID: CS-347, Title: Database System Concepts
+Course ID: EE-181, Title: Intro. to Digital Systems
+Course ID: FIN-201, Title: Investment Banking
+Course ID: HIS-351, Title: World History
+Course ID: MU-199, Title: Music Video Production
+Course ID: PHY-101, Title: Physical Principles
+
+
+
+Functions: 
+5. Write a function to return the Square of a given number and call it from an    
+anonymous block. 
+
+CREATE OR REPLACE FUNCTION square(num INTEGER)
+RETURN INTEGER
+AS
+ sq INTEGER;
+BEGIN
+ sq := num * num;
+RETURN sq;
+END;
+/
+DECLARE
+ num INTEGER;
+BEGIN
+ num := '&number';
+ DBMS_OUTPUT.PUT_LINE('Square of ' || num || ' is ' || square(num));
+END;
+/
+
+Ans:
+Enter value for number: 4
+Square of 4 is 16
+
+
+6. Based on the University Database Schema in Lab 2, write a Pl/Sql block of code 
+that lists the highest paid Instructor in each of the Department. It should make use 
+of a function department_highest which returns the highest paid Instructor for the 
+given branch. 
+
+CREATE OR REPLACE FUNCTION department_highest
+RETURN VARCHAR
+AS
+CURSOR c1 IS
+WITH temp(max_sal, dept) AS
+(SELECT MAX(salary) as max_sal, dept_name
+FROM instructor
+GROUP BY dept_name
+)
+SELECT name, max_sal, dept
+FROM temp, instructor
+WHERE salary = max_sal;
+BEGIN
+ FOR c IN c1
+ LOOP
+ DBMS_OUTPUT.PUT_LINE(c.name || ' from ' || c.dept || ' department has highest salary of
+' || c.max_sal);
+ END LOOP;
+RETURN '';
+END;
+DECLARE
+ dumm VARCHAR(10);
+BEGIN
+ dumm := department_highest;
+END;
+
+Ans:
+Wu from Finance department has highest salary of
+90000
+Mozart from Music department has highest salary of
+40000
+Einstein from Physics department has highest salary of
+95000
+Califieri from History department has highest salary of
+62000
+Singh from Elec. Eng. department has highest salary of
+80000
+Crick from Biology department has highest salary of
+72000
+Brandt from Comp. Sci. department has highest salary of
+92000
+Kim from Elec. Eng. department has highest salary of
+80000
+
+
+Packages: 
+7. Based on the University Database Schema in Lab 2, create a package to include 
+the following: 
+a) A named procedure to list the instructor_names of given department 
+b) A function which returns the max salary for the given department 
+c) Write a PL/SQL block to demonstrate the usage of above package components
+
+
+CREATE OR REPLACE PACKAGE university_package AS
+    PROCEDURE list_instructors(dept_name IN VARCHAR2);
+    FUNCTION max_salary(dept_name IN VARCHAR2) RETURN NUMERIC;
+END university_package;
+/
+
+CREATE OR REPLACE PACKAGE BODY university_package AS
+
+    PROCEDURE list_instructors(dept_name IN VARCHAR2) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Instructors in department ' || dept_name || ':');
+        FOR instructor_record IN 
+            (SELECT i.name
+             FROM instructor i
+             WHERE i.dept_name = dept_name) LOOP
+            DBMS_OUTPUT.PUT_LINE('Instructor: ' || instructor_record.name);
+        END LOOP;
+    END list_instructors;
+
+    FUNCTION max_salary(dept_name IN VARCHAR2) RETURN NUMERIC IS
+        v_max_salary NUMERIC(8,2);
+    BEGIN
+        SELECT MAX(i.salary)
+        INTO v_max_salary
+        FROM instructor i
+        WHERE i.dept_name = dept_name;
+        RETURN v_max_salary;
+    END max_salary;
+
+END university_package;
+/
+
+
+DECLARE
+    dept department.dept_name%TYPE;
+    v_max_salary NUMERIC(8,2);
+BEGIN
+    dept := '&deptname';
+    university_package.list_instructors(dept);
+    v_max_salary := university_package.max_salary(dept);
+    DBMS_OUTPUT.PUT_LINE('Maximum Salary in ' || dept || ': ' || v_max_salary);
+END;
+/
+
+
+Ans:
+
+Enter value for deptname: Comp. Sci.
+old   5:     dept := '&deptname';
+new   5:     dept := 'Comp. Sci.';
+Instructors in department Comp. Sci.:
+Instructor: Srinivasan
+Instructor: Wu
+Instructor: Mozart
+Instructor: Einstein
+Instructor: El Said
+Instructor: Gold
+Instructor: Katz
+Instructor: Califieri
+Instructor: Singh
+Instructor: Crick
+Instructor: Brandt
+Instructor: Kim
+Maximum Salary in Comp. Sci.: 95000
+
+
+Parameter Modes: IN, OUT, IN OUT 
+8. Write a PL/SQL procedure to return simple and compound interest (OUT 
+parameters) along with the Total Sum (IN OUT) i.e. Sum of Principle and Interest 
+taking as input the principle, rate of interest and number of years (IN parameters). 
+Call this procedure from an anonymous block. 
+
+CREATE OR REPLACE PROCEDURE calculate_interest(
+    p_principal IN NUMBER,
+    p_rate IN NUMBER,
+    p_years IN NUMBER,
+    p_simple_interest OUT NUMBER,
+    p_compound_interest OUT NUMBER,
+    p_total_sum IN OUT NUMBER) IS
+BEGIN
+    p_simple_interest := p_principal * p_rate * p_years / 100;
+    p_compound_interest := p_principal * (POWER(1 + p_rate / 100, p_years) - 1);
+    p_total_sum := p_principal + p_compound_interest;
+END calculate_interest;
+/
+
+DECLARE
+    v_principal NUMBER := &principal;
+    v_rate NUMBER := &rate;
+    v_years NUMBER := &years;
+    v_simple_interest NUMBER;
+    v_compound_interest NUMBER;
+    v_total_sum NUMBER := v_principal;
+BEGIN
+    calculate_interest(v_principal, v_rate, v_years, v_simple_interest, v_compound_interest, v_total_sum);
+    DBMS_OUTPUT.PUT_LINE('Principal: ' || v_principal);
+    DBMS_OUTPUT.PUT_LINE('Simple Interest: ' || v_simple_interest);
+    DBMS_OUTPUT.PUT_LINE('Compound Interest: ' || v_compound_interest);
+    DBMS_OUTPUT.PUT_LINE('Total Sum: ' || v_total_sum);
+END;
+/
+
+
+Ans:
+Enter value for principal: 10000
+old   2:     v_principal NUMBER := &principal;
+new   2:     v_principal NUMBER := 10000;
+Enter value for rate: 6
+old   3:     v_rate NUMBER := &rate;
+new   3:     v_rate NUMBER := 6;
+Enter value for years: 10
+old   4:     v_years NUMBER := &years;
+new   4:     v_years NUMBER := 10;
+Principal: 10000
+Simple Interest: 6000
+Compound Interest: 7908.4769654285362176
+Total Sum: 17908.4769654285362176
